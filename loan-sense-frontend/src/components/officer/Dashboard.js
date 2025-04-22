@@ -33,10 +33,11 @@ function Dashboard() {
 
   const fetchApplications = async () => {
     try {
-      const response = await axios.get('http://localhost:5001/api/loan/applications');
-      setApplications(response.data);
+      const response = await axios.get('https://loan-sense-backend.onrender.com/api/loans');
+      setApplications(response.data.data); // Note: response.data.data because our API returns { success: true, data: [...] }
       setLoading(false);
     } catch (err) {
+      console.error('Error fetching applications:', err);
       setError('Failed to fetch applications');
       setLoading(false);
     }
@@ -44,9 +45,10 @@ function Dashboard() {
 
   const handleStatusChange = async (loanId, newStatus) => {
     try {
-      await axios.put(`http://localhost:5001/api/loan/status/${loanId}`, { status: newStatus });
+      await axios.put(`https://loan-sense-backend.onrender.com/api/loan/${loanId}/status`, { status: newStatus });
       fetchApplications();
     } catch (err) {
+      console.error('Error updating status:', err);
       setError('Failed to update application status');
     }
   };
@@ -122,7 +124,7 @@ function Dashboard() {
                 <TableBody>
                   {applications.map((application) => (
                     <TableRow 
-                      key={application._id}
+                      key={application.loanId}
                       sx={{
                         '&:hover': {
                           backgroundColor: 'rgba(0, 0, 0, 0.04)',
@@ -158,7 +160,7 @@ function Dashboard() {
                               variant="contained"
                               color="success"
                               size="small"
-                              onClick={() => handleStatusChange(application._id, 'Approved')}
+                              onClick={() => handleStatusChange(application.loanId, 'Approved')}
                               sx={{ minWidth: 90 }}
                             >
                               Approve
@@ -167,7 +169,7 @@ function Dashboard() {
                               variant="contained"
                               color="error"
                               size="small"
-                              onClick={() => handleStatusChange(application._id, 'Rejected')}
+                              onClick={() => handleStatusChange(application.loanId, 'Rejected')}
                               sx={{ minWidth: 90 }}
                             >
                               Reject
@@ -176,7 +178,7 @@ function Dashboard() {
                               variant="contained"
                               color="warning"
                               size="small"
-                              onClick={() => handleStatusChange(application._id, 'Flagged for Review')}
+                              onClick={() => handleStatusChange(application.loanId, 'Flagged for Review')}
                               sx={{ minWidth: 90 }}
                             >
                               Flag

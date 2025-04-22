@@ -51,7 +51,7 @@ function LoanApplication() {
     setSuccess(false);
 
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/loan/assess`, formData);
+      const response = await axios.post('https://loan-sense-backend.onrender.com/api/loan/assess', formData);
       console.log('Response:', response.data);
       
       if (response.data.success) {
