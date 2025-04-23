@@ -12,11 +12,18 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
   Chip,
   CircularProgress,
   Alert,
-  Divider
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Select,
+  MenuItem,
+  Grid
 } from '@mui/material';
 import axios from 'axios';
 import Navbar from '../shared/Navbar';
@@ -26,6 +33,8 @@ function Dashboard() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchApplications();
@@ -34,7 +43,7 @@ function Dashboard() {
   const fetchApplications = async () => {
     try {
       const response = await axios.get('https://loan-sense-backend.onrender.com/api/loans');
-      setApplications(response.data.data); // Note: response.data.data because our API returns { success: true, data: [...] }
+      setApplications(response.data.data);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching applications:', err);
@@ -64,6 +73,16 @@ function Dashboard() {
       default:
         return 'default';
     }
+  };
+
+  const handleViewProfile = (application) => {
+    setSelectedApplication(application);
+    setProfileDialogOpen(true);
+  };
+
+  const handleCloseProfile = () => {
+    setProfileDialogOpen(false);
+    setSelectedApplication(null);
   };
 
   if (!userRole || userRole !== 'officer') {
@@ -118,7 +137,7 @@ function Dashboard() {
                     <TableCell sx={{ fontWeight: 'bold' }} align="right">Loan Amount</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }} align="center">Risk Rating</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }} align="center">Status</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }} align="center">Profile</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -132,7 +151,15 @@ function Dashboard() {
                       }}
                     >
                       <TableCell>{application.loanId}</TableCell>
-                      <TableCell>{application.name}</TableCell>
+                      <TableCell 
+                        sx={{ 
+                          cursor: 'pointer',
+                          '&:hover': { textDecoration: 'underline' }
+                        }}
+                        onClick={() => handleViewProfile(application)}
+                      >
+                        {application.name}
+                      </TableCell>
                       <TableCell align="right">
                         ${application.loanAmount.toLocaleString()}
                       </TableCell>
@@ -147,44 +174,39 @@ function Dashboard() {
                         />
                       </TableCell>
                       <TableCell align="center">
-                        <Chip
-                          label={application.status}
-                          color={getStatusColor(application.status)}
-                          sx={{ minWidth: 100 }}
-                        />
+                        <Select
+                          value={application.status}
+                          onChange={(e) => handleStatusChange(application.loanId, e.target.value)}
+                          size="small"
+                          sx={{
+                            minWidth: 150,
+                            '& .MuiSelect-select': {
+                              padding: '4px 8px',
+                            },
+                          }}
+                        >
+                          <MenuItem value="Pending">
+                            <Chip label="Pending" color="default" size="small" />
+                          </MenuItem>
+                          <MenuItem value="Approved">
+                            <Chip label="Approved" color="success" size="small" />
+                          </MenuItem>
+                          <MenuItem value="Rejected">
+                            <Chip label="Rejected" color="error" size="small" />
+                          </MenuItem>
+                          <MenuItem value="Flagged for Review">
+                            <Chip label="Flagged" color="warning" size="small" />
+                          </MenuItem>
+                        </Select>
                       </TableCell>
                       <TableCell align="center">
-                        {application.status === 'Pending' && (
-                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                            <Button
-                              variant="contained"
-                              color="success"
-                              size="small"
-                              onClick={() => handleStatusChange(application.loanId, 'Approved')}
-                              sx={{ minWidth: 90 }}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              variant="contained"
-                              color="error"
-                              size="small"
-                              onClick={() => handleStatusChange(application.loanId, 'Rejected')}
-                              sx={{ minWidth: 90 }}
-                            >
-                              Reject
-                            </Button>
-                            <Button
-                              variant="contained"
-                              color="warning"
-                              size="small"
-                              onClick={() => handleStatusChange(application.loanId, 'Flagged for Review')}
-                              sx={{ minWidth: 90 }}
-                            >
-                              Flag
-                            </Button>
-                          </Box>
-                        )}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleViewProfile(application)}
+                        >
+                          View Profile
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -194,6 +216,105 @@ function Dashboard() {
           </CardContent>
         </Card>
       </Box>
+
+      {/* Profile Dialog */}
+      <Dialog 
+        open={profileDialogOpen} 
+        onClose={handleCloseProfile}
+        maxWidth="md"
+        fullWidth
+      >
+        {selectedApplication && (
+          <>
+            <DialogTitle>
+              <Typography variant="h6">
+                Applicant Profile: {selectedApplication.name}
+              </Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                Loan ID: {selectedApplication.loanId}
+              </Typography>
+            </DialogTitle>
+            <DialogContent dividers>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom>Personal Information</Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Age</Typography>
+                  <Typography variant="body1">{selectedApplication.age}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Education</Typography>
+                  <Typography variant="body1">{selectedApplication.education}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Marital Status</Typography>
+                  <Typography variant="body1">{selectedApplication.maritalStatus}</Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Employment Details</Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Employment Type</Typography>
+                  <Typography variant="body1">{selectedApplication.employmentType}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Months Employed</Typography>
+                  <Typography variant="body1">{selectedApplication.monthsEmployed}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Annual Income</Typography>
+                  <Typography variant="body1">${selectedApplication.income.toLocaleString()}</Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Loan Details</Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Loan Amount</Typography>
+                  <Typography variant="body1">${selectedApplication.loanAmount.toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Loan Purpose</Typography>
+                  <Typography variant="body1">{selectedApplication.loanPurpose}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Credit Score</Typography>
+                  <Typography variant="body1">{selectedApplication.creditScore}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">DTI Ratio</Typography>
+                  <Typography variant="body1">{selectedApplication.dtiRatio}%</Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Additional Information</Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="subtitle2" color="text.secondary">Has Mortgage</Typography>
+                  <Typography variant="body1">{selectedApplication.hasMortgage ? 'Yes' : 'No'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="subtitle2" color="text.secondary">Has Dependents</Typography>
+                  <Typography variant="body1">{selectedApplication.hasDependents ? 'Yes' : 'No'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="subtitle2" color="text.secondary">Has Co-Signer</Typography>
+                  <Typography variant="body1">{selectedApplication.hasCoSigner ? 'Yes' : 'No'}</Typography>
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseProfile}>Close</Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 }
