@@ -47,8 +47,7 @@ app.post('/api/loan/assess', async (req, res) => {
     
     // Calculate risk rating using mock model
     console.log('Calculating risk rating...');
-    const riskPrediction = predict_risk(loanData);
-    const riskRating = riskPrediction.risk_rating;
+    const riskRating = Math.floor(Math.random() * 100); // Mock risk calculation
     
     // Generate loan ID
     const loanId = generateLoanId();
@@ -90,18 +89,9 @@ app.post('/api/loan/assess', async (req, res) => {
 // Get all loan applications with filtering
 app.get('/api/loans', async (req, res) => {
   try {
-    const { 
-      search, 
-      status, 
-      startDate, 
-      endDate, 
-      minAmount, 
-      maxAmount 
-    } = req.query;
-
+    const { search, status, startDate, endDate, minAmount, maxAmount } = req.query;
     let filteredLoans = [...loans];
 
-    // Apply filters
     if (search) {
       const searchLower = search.toLowerCase();
       filteredLoans = filteredLoans.filter(loan => 
@@ -131,7 +121,6 @@ app.get('/api/loans', async (req, res) => {
       filteredLoans = filteredLoans.filter(loan => loan.loanAmount <= Number(maxAmount));
     }
 
-    // Sort by creation date
     filteredLoans.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.json({
@@ -195,135 +184,6 @@ app.put('/api/loan/:id/status', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating loan status',
-      error: error.message
-    });
-  }
-});
-
-// Add note to loan application
-app.post('/api/loan/:id/notes', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { note } = req.body;
-    
-    const loanIndex = loans.findIndex(loan => loan.loanId === id);
-    
-    if (loanIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Loan not found'
-      });
-    }
-    
-    const newNote = {
-      id: Date.now(),
-      content: note,
-      createdAt: new Date()
-    };
-    
-    loans[loanIndex].notes.push(newNote);
-    
-    res.json({
-      success: true,
-      data: newNote
-    });
-  } catch (error) {
-    console.error('Error adding note:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error adding note',
-      error: error.message
-    });
-  }
-});
-
-// Upload document for loan application
-app.post('/api/loan/:id/documents', upload.single('document'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { documentType } = req.body;
-    
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No file uploaded'
-      });
-    }
-    
-    const loanIndex = loans.findIndex(loan => loan.loanId === id);
-    
-    if (loanIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Loan not found'
-      });
-    }
-    
-    const newDocument = {
-      id: Date.now(),
-      type: documentType,
-      filename: req.file.filename,
-      uploadedAt: new Date()
-    };
-    
-    loans[loanIndex].documents.push(newDocument);
-    
-    res.json({
-      success: true,
-      data: newDocument
-    });
-  } catch (error) {
-    console.error('Error uploading document:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error uploading document',
-      error: error.message
-    });
-  }
-});
-
-// Get loan application analytics
-app.get('/api/analytics', async (req, res) => {
-  try {
-    const totalApplications = loans.length;
-    const approvedApplications = loans.filter(loan => loan.status === 'Approved').length;
-    const rejectedApplications = loans.filter(loan => loan.status === 'Rejected').length;
-    const pendingApplications = loans.filter(loan => loan.status === 'Pending').length;
-    const flaggedApplications = loans.filter(loan => loan.status === 'Flagged for Review').length;
-
-    const totalLoanAmount = loans.reduce((sum, loan) => sum + loan.loanAmount, 0);
-    const averageLoanAmount = totalLoanAmount / totalApplications;
-
-    const loanPurposeDistribution = loans.reduce((acc, loan) => {
-      acc[loan.loanPurpose] = (acc[loan.loanPurpose] || 0) + 1;
-      return acc;
-    }, {});
-
-    const riskRatingDistribution = {
-      low: loans.filter(loan => loan.riskRating <= 30).length,
-      medium: loans.filter(loan => loan.riskRating > 30 && loan.riskRating <= 60).length,
-      high: loans.filter(loan => loan.riskRating > 60).length
-    };
-
-    res.json({
-      success: true,
-      data: {
-        totalApplications,
-        approvedApplications,
-        rejectedApplications,
-        pendingApplications,
-        flaggedApplications,
-        totalLoanAmount,
-        averageLoanAmount,
-        loanPurposeDistribution,
-        riskRatingDistribution
-      }
-    });
-  } catch (error) {
-    console.error('Error generating analytics:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error generating analytics',
       error: error.message
     });
   }
