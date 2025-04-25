@@ -26,9 +26,6 @@ function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Clear all existing loan applications
-    localStorage.removeItem('loanApplications');
-    
     // Check if user is already logged in
     const currentUser = localStorage.getItem('currentUser');
     if (currentUser) {
