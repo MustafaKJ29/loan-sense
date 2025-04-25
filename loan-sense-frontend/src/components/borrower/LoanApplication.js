@@ -120,97 +120,65 @@ function LoanApplication() {
   };
 
   const calculateRiskRating = (data) => {
-    // Convert categorical variables to numeric
-    const educationMap = {
-      'High School': 0,
-      "Bachelor's": 1,
-      "Master's": 2,
-      'PhD': 3
-    };
-
-    const employmentTypeMap = {
-      'Unemployed': 0,
-      'Part-time': 1,
-      'Self-employed': 2,
-      'Full-time': 3
-    };
-
-    const maritalStatusMap = {
-      'Single': 0,
-      'Divorced': 1,
-      'Married': 2
-    };
-
-    const binaryMap = {
-      'No': 0,
-      'Yes': 1
-    };
-
-    const loanPurposeMap = {
-      'Other': 0,
-      'Auto': 1,
-      'Education': 2,
-      'Business': 3,
-      'Home': 4
-    };
-
-    // Prepare features in the same order as the model expects
-    const features = [
-      parseInt(data.age),
-      parseInt(data.income),
-      parseInt(data.loanAmount),
-      parseInt(data.creditScore),
-      parseInt(data.monthsEmployed),
-      parseInt(data.loanTerm),
-      parseFloat(data.dtiRatio),
-      educationMap[data.education],
-      employmentTypeMap[data.employmentType],
-      maritalStatusMap[data.maritalStatus],
-      binaryMap[data.hasMortgage],
-      binaryMap[data.hasDependents],
-      loanPurposeMap[data.loanPurpose],
-      binaryMap[data.hasCoSigner]
-    ];
-
-    // XGBoost model logic (simplified version)
-    let score = 0;
+    let riskScore = 0;
     
-    // Credit Score Impact (30%)
+    // Credit Score Impact (30% of risk)
+    // Higher credit score = Lower risk
     const creditScore = parseInt(data.creditScore);
-    if (creditScore >= 750) score += 30;
-    else if (creditScore >= 700) score += 25;
-    else if (creditScore >= 650) score += 20;
-    else if (creditScore >= 600) score += 15;
-    else score += 10;
+    if (creditScore >= 750) riskScore += 0;  // Excellent - No risk
+    else if (creditScore >= 700) riskScore += 7;  // Very Good
+    else if (creditScore >= 650) riskScore += 15; // Good
+    else if (creditScore >= 600) riskScore += 22; // Fair
+    else riskScore += 30; // Poor
 
-    // DTI Ratio Impact (20%)
+    // DTI Ratio Impact (20% of risk)
+    // Higher DTI = Higher risk
     const dtiRatio = parseFloat(data.dtiRatio);
-    if (dtiRatio <= 20) score += 20;
-    else if (dtiRatio <= 30) score += 15;
-    else if (dtiRatio <= 40) score += 10;
-    else score += 5;
+    if (dtiRatio <= 20) riskScore += 0;     // Excellent
+    else if (dtiRatio <= 30) riskScore += 5; // Good
+    else if (dtiRatio <= 40) riskScore += 12; // Fair
+    else riskScore += 20; // Poor
 
-    // Employment Stability (15%)
+    // Employment Stability (15% of risk)
+    // More months employed = Lower risk
     const monthsEmployed = parseInt(data.monthsEmployed);
-    if (monthsEmployed >= 60) score += 15;
-    else if (monthsEmployed >= 36) score += 12;
-    else if (monthsEmployed >= 24) score += 8;
-    else score += 5;
+    if (monthsEmployed >= 60) riskScore += 0;     // 5+ years - Very Stable
+    else if (monthsEmployed >= 36) riskScore += 5; // 3+ years - Stable
+    else if (monthsEmployed >= 24) riskScore += 10; // 2+ years - Moderate
+    else riskScore += 15; // Less than 2 years - Risky
 
-    // Income to Loan Ratio (15%)
+    // Income to Loan Amount Ratio (20% of risk)
+    // Higher ratio = Lower risk (income is X times the loan amount)
     const incomeToLoanRatio = parseInt(data.income) / parseInt(data.loanAmount);
-    if (incomeToLoanRatio >= 0.5) score += 15;
-    else if (incomeToLoanRatio >= 0.3) score += 10;
-    else if (incomeToLoanRatio >= 0.2) score += 5;
-    else score += 2;
+    if (incomeToLoanRatio >= 3) riskScore += 0;     // Excellent - Income is 3x or more
+    else if (incomeToLoanRatio >= 2) riskScore += 5; // Good - Income is 2x
+    else if (incomeToLoanRatio >= 1) riskScore += 12; // Fair - Income equals loan
+    else riskScore += 20; // Poor - Income less than loan amount
 
-    // Other Factors (20%)
-    if (data.employmentType === 'Full-time') score += 5;
-    if (data.education === "Master's" || data.education === 'PhD') score += 5;
-    if (data.hasCoSigner === 'Yes') score += 5;
-    if (data.hasMortgage === 'No') score += 5;
+    // Other Factors (15% of risk)
+    let otherFactorsRisk = 15; // Start with maximum risk
 
-    return Math.min(100, Math.max(0, score));
+    // Employment Type (5%)
+    if (data.employmentType === 'Full-time') otherFactorsRisk -= 5;
+    else if (data.employmentType === 'Part-time') otherFactorsRisk -= 3;
+    else if (data.employmentType === 'Self-employed') otherFactorsRisk -= 2;
+    // Unemployed gets no reduction
+
+    // Education (4%)
+    if (data.education === 'PhD') otherFactorsRisk -= 4;
+    else if (data.education === "Master's") otherFactorsRisk -= 3;
+    else if (data.education === "Bachelor's") otherFactorsRisk -= 2;
+    else if (data.education === "High School") otherFactorsRisk -= 1;
+
+    // Co-Signer (3%)
+    if (data.hasCoSigner === 'Yes') otherFactorsRisk -= 3;
+
+    // Mortgage History (3%)
+    if (data.hasMortgage === 'Yes') otherFactorsRisk -= 3; // Has history of managing debt
+
+    riskScore += otherFactorsRisk;
+
+    return Math.min(100, Math.max(0, riskScore));
   };
 
   return (
@@ -263,7 +231,7 @@ function LoanApplication() {
                   onChange={handleChange}
                   required
                   InputProps={{
-                    startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>
+                    startAdornment: <Typography sx={{ mr: 1 }}>₹</Typography>
                   }}
                 />
               </Grid>
@@ -278,7 +246,7 @@ function LoanApplication() {
                   onChange={handleChange}
                   required
                   InputProps={{
-                    startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>
+                    startAdornment: <Typography sx={{ mr: 1 }}>₹</Typography>
                   }}
                 />
               </Grid>
