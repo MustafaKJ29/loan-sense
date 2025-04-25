@@ -3,29 +3,23 @@ import {
   Box,
   Card,
   CardContent,
-  Typography,
   TextField,
   Button,
+  Typography,
   Grid,
-  useTheme,
-  useMediaQuery,
-  Divider
+  Paper,
 } from '@mui/material';
-import { PieChart } from '@mui/x-charts/PieChart';
 
 function EMICalculator() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
   const [formData, setFormData] = useState({
-    loanAmount: '',
+    principal: '',
     interestRate: '',
-    loanTerm: ''
+    tenure: ''
   });
 
-  const [emiData, setEmiData] = useState(null);
+  const [result, setResult] = useState(null);
 
-  const handleInputChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -34,88 +28,83 @@ function EMICalculator() {
   };
 
   const calculateEMI = () => {
-    const { loanAmount, interestRate, loanTerm } = formData;
-    if (!loanAmount || !interestRate || !loanTerm) return;
+    const P = parseFloat(formData.principal);
+    const R = parseFloat(formData.interestRate) / 12 / 100; // Monthly interest rate
+    const N = parseFloat(formData.tenure) * 12; // Total number of months
 
-    const principal = parseFloat(loanAmount);
-    const rate = parseFloat(interestRate) / 100 / 12;
-    const time = parseFloat(loanTerm) * 12;
+    // EMI calculation formula: P * R * (1 + R)^N / ((1 + R)^N - 1)
+    const emi = P * R * Math.pow(1 + R, N) / (Math.pow(1 + R, N) - 1);
+    const totalAmount = emi * N;
+    const totalInterest = totalAmount - P;
 
-    const emi = principal * rate * Math.pow(1 + rate, time) / (Math.pow(1 + rate, time) - 1);
-    const totalPayment = emi * time;
-    const totalInterest = totalPayment - principal;
-
-    setEmiData({
-      principal,
-      interest: totalInterest,
+    setResult({
       emi: emi.toFixed(2),
-      totalPayment: totalPayment.toFixed(2)
+      totalAmount: totalAmount.toFixed(2),
+      totalInterest: totalInterest.toFixed(2)
     });
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    calculateEMI();
+  };
+
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom color="primary">
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
         EMI Calculator
-      </Typography>
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Calculate your monthly EMI and view the loan breakdown.
       </Typography>
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <Card elevation={3}>
+          <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Loan Details
-              </Typography>
-              <Divider sx={{ mb: 3 }} />
+              <Box component="form" onSubmit={handleSubmit}>
+                <TextField
+                  fullWidth
+                  label="Loan Amount"
+                  name="principal"
+                  type="number"
+                  value={formData.principal}
+                  onChange={handleChange}
+                  margin="normal"
+                  InputProps={{
+                    startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>
+                  }}
+                />
 
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <TextField
-                    name="loanAmount"
-                    label="Loan Amount ($)"
-                    type="number"
-                    value={formData.loanAmount}
-                    onChange={handleInputChange}
-                    fullWidth
-                    required
-                  />
-                </Grid>
+                <TextField
+                  fullWidth
+                  label="Interest Rate (% per year)"
+                  name="interestRate"
+                  type="number"
+                  value={formData.interestRate}
+                  onChange={handleChange}
+                  margin="normal"
+                  InputProps={{
+                    endAdornment: <Typography sx={{ ml: 1 }}>%</Typography>
+                  }}
+                />
 
-                <Grid item xs={12}>
-                  <TextField
-                    name="interestRate"
-                    label="Interest Rate (%)"
-                    type="number"
-                    value={formData.interestRate}
-                    onChange={handleInputChange}
-                    fullWidth
-                    required
-                  />
-                </Grid>
+                <TextField
+                  fullWidth
+                  label="Loan Tenure (years)"
+                  name="tenure"
+                  type="number"
+                  value={formData.tenure}
+                  onChange={handleChange}
+                  margin="normal"
+                  InputProps={{
+                    endAdornment: <Typography sx={{ ml: 1 }}>years</Typography>
+                  }}
+                />
 
-                <Grid item xs={12}>
-                  <TextField
-                    name="loanTerm"
-                    label="Loan Term (Years)"
-                    type="number"
-                    value={formData.loanTerm}
-                    onChange={handleInputChange}
-                    fullWidth
-                    required
-                  />
-                </Grid>
-              </Grid>
-
-              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
                 <Button
+                  type="submit"
                   variant="contained"
-                  color="primary"
-                  onClick={calculateEMI}
-                  disabled={!formData.loanAmount || !formData.interestRate || !formData.loanTerm}
-                  sx={{ minWidth: 200, py: 1.5 }}
+                  size="large"
+                  fullWidth
+                  sx={{ mt: 3 }}
                 >
                   Calculate EMI
                 </Button>
@@ -124,58 +113,36 @@ function EMICalculator() {
           </Card>
         </Grid>
 
-        {emiData && (
+        {result && (
           <Grid item xs={12} md={6}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  EMI Breakdown
+            <Paper sx={{ p: 3, height: '100%', backgroundColor: 'primary.light' }}>
+              <Typography variant="h5" gutterBottom color="white">
+                Loan Summary
+              </Typography>
+
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" color="white">
+                  Monthly EMI
                 </Typography>
-                <Divider sx={{ mb: 3 }} />
+                <Typography variant="h4" color="white" gutterBottom>
+                  ${result.emi}
+                </Typography>
 
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    Monthly EMI: <strong>${emiData.emi}</strong>
-                  </Typography>
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    Total Payment: <strong>${emiData.totalPayment}</strong>
-                  </Typography>
-                  <Typography variant="body1">
-                    Total Interest: <strong>${emiData.interest.toFixed(2)}</strong>
-                  </Typography>
-                </Box>
+                <Typography variant="h6" color="white" sx={{ mt: 2 }}>
+                  Total Payment
+                </Typography>
+                <Typography variant="h4" color="white" gutterBottom>
+                  ${result.totalAmount}
+                </Typography>
 
-                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                  <PieChart
-                    series={[
-                      {
-                        data: [
-                          { id: 0, value: emiData.principal, label: 'Principal', color: theme.palette.primary.main },
-                          { id: 1, value: emiData.interest, label: 'Interest', color: theme.palette.secondary.main },
-                        ],
-                        innerRadius: 30,
-                        outerRadius: 100,
-                        paddingAngle: 5,
-                        cornerRadius: 5,
-                        startAngle: -90,
-                        endAngle: 270,
-                        cx: 150,
-                        cy: 150,
-                      },
-                    ]}
-                    width={isMobile ? 300 : 400}
-                    height={300}
-                    slotProps={{
-                      legend: {
-                        direction: 'row',
-                        position: { vertical: 'bottom', horizontal: 'middle' },
-                        padding: 0,
-                      },
-                    }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
+                <Typography variant="h6" color="white" sx={{ mt: 2 }}>
+                  Total Interest
+                </Typography>
+                <Typography variant="h4" color="white">
+                  ${result.totalInterest}
+                </Typography>
+              </Box>
+            </Paper>
           </Grid>
         )}
       </Grid>

@@ -3,76 +3,80 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
+  Typography,
   Button,
   Box,
   IconButton,
-  useTheme,
-  useMediaQuery
+  Avatar,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
+import HomeIcon from '@mui/icons-material/Home';
 
-function Navbar({ userRole }) {
+function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  const userRole = currentUser?.role;
 
   const handleLogout = () => {
-    localStorage.removeItem('userRole');
+    localStorage.removeItem('currentUser');
     navigate('/login');
   };
 
-  const isActive = (path) => location.pathname.includes(path);
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
 
   const borrowerLinks = [
-    { path: '/borrower/apply', label: 'Loan Application' },
-    { path: '/borrower/calculator', label: 'EMI Calculator' },
-    { path: '/borrower/help', label: 'Help' }
+    { path: '/borrower', label: 'Dashboard' },
+    { path: '/borrower/apply', label: 'Apply for Loan' },
+    { path: '/borrower/calculator', label: 'Loan Calculator' },
+    { path: '/borrower/status', label: 'Loan Status' },
+    { path: '/borrower/help', label: 'Help' },
   ];
 
   const officerLinks = [
-    { path: '/officer', label: 'Dashboard' }
+    { path: '/officer', label: 'Dashboard' },
   ];
 
   const links = userRole === 'borrower' ? borrowerLinks : officerLinks;
 
   return (
-    <AppBar position="sticky" color="default" elevation={1}>
+    <AppBar position="static">
       <Toolbar>
-        <Box sx={{ flexGrow: 1, display: 'flex', gap: 2 }}>
+        <IconButton
+          edge="start"
+          color="inherit"
+          onClick={() => navigate(userRole === 'borrower' ? '/borrower' : '/officer')}
+          sx={{ mr: 2 }}
+        >
+          <HomeIcon />
+        </IconButton>
+        
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          LoanSense
+        </Typography>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {links.map((link) => (
             <Button
               key={link.path}
-              color="primary"
+              color={isActive(link.path) ? 'secondary' : 'inherit'}
               onClick={() => navigate(link.path)}
-              sx={{
-                px: 2,
-                py: 1,
-                backgroundColor: isActive(link.path) ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
-                '&:hover': {
-                  backgroundColor: 'rgba(25, 118, 210, 0.12)',
-                },
-                ...(!isMobile && {
-                  minWidth: 120
-                })
-              }}
             >
               {link.label}
             </Button>
           ))}
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+              {currentUser?.email?.[0]?.toUpperCase()}
+            </Avatar>
+            <IconButton color="inherit" onClick={handleLogout} title="Logout">
+              <LogoutIcon />
+            </IconButton>
+          </Box>
         </Box>
-
-        <IconButton
-          color="primary"
-          onClick={handleLogout}
-          sx={{
-            '&:hover': {
-              backgroundColor: 'rgba(25, 118, 210, 0.08)',
-            },
-          }}
-        >
-          <LogoutIcon />
-        </IconButton>
       </Toolbar>
     </AppBar>
   );
